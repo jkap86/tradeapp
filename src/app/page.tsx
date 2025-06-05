@@ -3,7 +3,6 @@
 import Allplayers from "@/lib/allplayers.json";
 import { League, LeagueDetail, User, Roster } from "@/lib/types";
 import axios from "axios";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

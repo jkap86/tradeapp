@@ -11,7 +11,7 @@ type PairwiseVote = {
 export async function POST(req: NextRequest) {
   const formData = await req.json();
 
-  const { identifier, twoForOnes, type, existingVotes } = formData;
+  const { identifier, twoForOnes, type } = formData;
 
   const identifier_array = identifier?.split("__");
 
