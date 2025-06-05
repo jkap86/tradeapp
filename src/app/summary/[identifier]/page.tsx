@@ -2,7 +2,6 @@
 
 import Allplayers from "@/lib/allplayers.json";
 import axios from "axios";
-import Link from "next/link";
 import { ReactNode, use, useEffect, useState } from "react";
 
 interface summary {
