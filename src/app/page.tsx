@@ -42,7 +42,6 @@ export default function Home() {
     roster_id: 0,
   });
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
-  const [identifier, setIdentifier] = useState("");
 
   const fetchUserLeagues = async () => {
     const response = await axios.get("/api/user", {
