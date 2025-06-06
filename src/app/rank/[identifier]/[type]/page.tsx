@@ -4,7 +4,6 @@ import axios from "axios";
 import { use, useEffect, useState } from "react";
 import Allplayers from "@/lib/allplayers.json";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 const allplayers: { [key: string]: { [key: string]: string } } =
   Object.fromEntries(
@@ -24,7 +23,7 @@ export default function Rank({
   const [league_name, setLeague_name] = useState("");
   const [ranks, setRanks] = useState<{ rank: number; player_id: string }[]>([]);
   const [scores, setScores] = useState<
-    { rank: number; player_id: string; score: number }[]
+    { rank: number; player_id: string; score: number; manager: "u" | "l" }[]
   >([]);
   const [twoForOnes, SetTwoForOnes] = useState<
     {
@@ -69,9 +68,14 @@ export default function Rank({
       if (type === "u") {
         if (response.data.user_ranks.length === 0) {
           setRanks(
-            response.data.players.map((player_id: string, index: number) => {
-              return { rank: index + 1, player_id };
-            })
+            response.data.players.map(
+              (
+                player: { player_id: string; manager: "u" | "l" },
+                index: number
+              ) => {
+                return { rank: index + 1, ...player };
+              }
+            )
           );
         } else {
           setRanks(response.data.user_ranks);
@@ -79,9 +83,14 @@ export default function Rank({
       } else if (type === "l") {
         if (response.data.lm_ranks.length === 0) {
           setRanks(
-            response.data.players.map((player_id: string, index: number) => {
-              return { rank: index + 1, player_id };
-            })
+            response.data.players.map(
+              (
+                player: { player_id: string; manager: "u" | "l" },
+                index: number
+              ) => {
+                return { rank: index + 1, ...player };
+              }
+            )
           );
         } else {
           setRanks(response.data.lm_ranks);
@@ -162,31 +171,30 @@ export default function Rank({
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col">
-      <div className="m-8">
-        Send leaguemate this link for them to rank these players -
-        <br />
-        <strong>
-          <Link href={`/rank/${identifier}/l`}>LEAGUEMATE LINK</Link>
-        </strong>
-      </div>
+    <div className="h-screen w-screen flex flex-col items-center text-center">
       <h1>{league_name}</h1>
-      <table>
+      <h2>Rank these players according to your league settings.</h2>
+      <table className="table-fixed w-full">
         <tbody>
           {ranks
             .sort((a, b) => a.rank - b.rank)
             .map((player) => {
               return (
-                <tr key={player.player_id}>
+                <tr key={player.player_id} className="outline outline-gray-500">
                   <td>{player.rank}</td>
-                  <td>
+                  <td colSpan={3}>
+                    {allplayers[player.player_id]?.position || "-"}
+                    &nbsp;
                     {allplayers[player.player_id]?.full_name ||
                       player.player_id}
+                    &nbsp;
+                    {allplayers[player.player_id]?.team || "FA"}
                   </td>
                   <td
                     onClick={() =>
                       player.rank > 1 && movePlayer(player.rank, "up")
                     }
+                    className="text-5xl"
                   >
                     +
                   </td>
@@ -195,6 +203,7 @@ export default function Rank({
                       player.rank < ranks.length &&
                       movePlayer(player.rank, "down")
                     }
+                    className="text-5xl"
                   >
                     -
                   </td>
@@ -203,46 +212,67 @@ export default function Rank({
             })}
         </tbody>
       </table>
-      <button onClick={generateTwoForOnes}>Generate 2 for 1 comps</button>
+      <button
+        className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+        onClick={generateTwoForOnes}
+      >
+        Generate 2 for 1 comps
+      </button>
       {twoForOnes.length > 0 && (
-        <div className="flex flex-col">
-          <table>
-            <tbody>
-              {twoForOnes
-                .filter((t) => t.gap < 25)
-                .sort((a, b) => a.gap - b.gap)
-                .map((comp) => {
-                  return (
-                    <tr key={comp.i + comp.j + comp.k}>
-                      <td
-                        className={
-                          comp.winner === "pair"
-                            ? "outline outline-2 outline-green-500"
-                            : ""
-                        }
-                        onClick={() => pickSide(comp, "pair")}
-                      >
-                        {allplayers[comp.i]?.full_name || comp.i} +
-                        {allplayers[comp.j]?.full_name || comp.j}
-                      </td>
-                      <td>OR</td>
-                      <td
-                        onClick={() => pickSide(comp, "single")}
-                        className={
-                          comp.winner === "single"
-                            ? "outline outline-2 outline-green-500"
-                            : ""
-                        }
-                      >
-                        {allplayers[comp.k]?.full_name || comp.k}
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
+        <div className="flex flex-col items-center text-center">
+          <ol>
+            {twoForOnes
+              .filter((t) => t.gap < 25)
+              .sort(
+                (a, b) =>
+                  a.gap - b.gap ||
+                  parseInt(a.k) +
+                    parseInt(a.i) +
+                    parseInt(a.j) -
+                    (parseInt(b.k) + parseInt(b.i) + parseInt(b.j))
+              )
+              .map((comp) => {
+                return (
+                  <li
+                    key={comp.i + comp.j + comp.k}
+                    className="h-[7rem] flex justify-evenly items-center bg-gray-600 m-4"
+                  >
+                    <span
+                      className={
+                        (comp.winner === "pair"
+                          ? "outline outline-2 outline-green-500"
+                          : "") + " flex flex-col"
+                      }
+                      onClick={() => pickSide(comp, "pair")}
+                    >
+                      <span>{allplayers[comp.i]?.full_name || comp.i}</span>
+                      <span>+</span>
+                      <span>{allplayers[comp.j]?.full_name || comp.j}</span>
+                    </span>
 
-          <button onClick={generateRankings}>Submit</button>
+                    <span className="m-4">OR</span>
+
+                    <span
+                      onClick={() => pickSide(comp, "single")}
+                      className={
+                        comp.winner === "single"
+                          ? "outline outline-2 outline-green-500"
+                          : ""
+                      }
+                    >
+                      {allplayers[comp.k]?.full_name || comp.k}
+                    </span>
+                  </li>
+                );
+              })}
+          </ol>
+
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem] mb-8"
+            onClick={generateRankings}
+          >
+            Generate Rankings
+          </button>
         </div>
       )}
     </div>

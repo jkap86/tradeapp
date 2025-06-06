@@ -3,7 +3,7 @@
 import Allplayers from "@/lib/allplayers.json";
 import { League, LeagueDetail, User, Roster } from "@/lib/types";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const allplayers: { [key: string]: { [key: string]: string } } =
@@ -15,7 +15,6 @@ const allplayers: { [key: string]: { [key: string]: string } } =
   );
 
 export default function Home() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [userLeagues, setUserLeagues] = useState<User>({
     user_id: "",
@@ -41,7 +40,19 @@ export default function Home() {
     avatar: "",
     roster_id: 0,
   });
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<
+    { player_id: string; manager: "u" | "l" }[]
+  >([]);
+  const [identifier, setIdentifier] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const userRoster = leagueDetail.rosters.find(
+    (roster) => roster.user_id === userLeagues.user_id
+  );
+
+  const lmRoster = leagueDetail.rosters.find(
+    (roster) => roster.roster_id === selectedLeaguemate.roster_id
+  );
 
   const fetchUserLeagues = async () => {
     const response = await axios.get("/api/user", {
@@ -65,10 +76,18 @@ export default function Home() {
 
   const modifySelectedPlayers = (player_id: string, checked: boolean) => {
     if (checked) {
-      setSelectedPlayers((prevState) => [...prevState, player_id]);
+      if (selectedPlayers.length < 15) {
+        setSelectedPlayers((prevState) => [
+          ...prevState,
+          {
+            player_id,
+            manager: userRoster?.players.includes(player_id) ? "u" : "l",
+          },
+        ]);
+      }
     } else {
       setSelectedPlayers((prevState) =>
-        prevState.filter((x) => x !== player_id)
+        prevState.filter((x) => x.player_id !== player_id)
       );
     }
   };
@@ -84,20 +103,13 @@ export default function Home() {
       lm_username: selectedLeaguemate.username,
     });
 
-    router.push(`/rank/${response.data}/u`);
+    setIdentifier(response.data);
+    // router.push(`/rank/${response.data}/u`);
   };
 
   useEffect(() => {
     setSelectedPlayers([]);
   }, [selectedLeaguemate]);
-
-  const userRoster = leagueDetail.rosters.find(
-    (roster) => roster.user_id === userLeagues.user_id
-  );
-
-  const lmRoster = leagueDetail.rosters.find(
-    (roster) => roster.roster_id === selectedLeaguemate.roster_id
-  );
 
   const selectLeaguemate = (roster_id: number) => {
     const lmRoster = leagueDetail.rosters.find(
@@ -135,27 +147,29 @@ export default function Home() {
 
   const getRosterTable = (roster: Roster | undefined) => {
     return (
-      <table>
+      <table className="w-1/2 table-fixed align-top">
         <tbody>
           {(roster?.players || [])
             .sort((a, b) => getPositionValue(a) - getPositionValue(b))
             .map((player_id) => {
               return (
-                <tr key={player_id}>
+                <tr
+                  key={player_id}
+                  className={
+                    selectedPlayers.some((sp) => sp.player_id === player_id)
+                      ? `outline outline-green-500`
+                      : ""
+                  }
+                  onClick={() =>
+                    modifySelectedPlayers(
+                      player_id,
+                      !selectedPlayers.some((sp) => sp.player_id === player_id)
+                    )
+                  }
+                >
+                  <td>{allplayers[player_id]?.position || "-"}</td>
                   <td>{allplayers[player_id]?.full_name || player_id}</td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      disabled={
-                        !selectedPlayers.includes(player_id) &&
-                        selectedPlayers.length === 15
-                      }
-                      checked={selectedPlayers.includes(player_id)}
-                      onChange={(e) =>
-                        modifySelectedPlayers(player_id, e.target.checked)
-                      }
-                    />
-                  </td>
+                  <td>{allplayers[player_id]?.team || "FA"}</td>
                 </tr>
               );
             })}
@@ -181,20 +195,22 @@ export default function Home() {
                       : "")
                   })`}`;
               return (
-                <tr key={`${pick.season}_${pick.round}_${pick.roster_id}`}>
-                  <td>{pick_name.replace(`(${roster?.username})`, "")}</td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      disabled={
-                        !selectedPlayers.includes(pick_name) &&
-                        selectedPlayers.length === 15
-                      }
-                      checked={selectedPlayers.includes(pick_name)}
-                      onChange={(e) =>
-                        modifySelectedPlayers(pick_name, e.target.checked)
-                      }
-                    />
+                <tr
+                  key={`${pick.season}_${pick.round}_${pick.roster_id}`}
+                  className={
+                    selectedPlayers.some((sp) => sp.player_id === pick_name)
+                      ? `outline outline-green-500`
+                      : ""
+                  }
+                  onClick={() =>
+                    modifySelectedPlayers(
+                      pick_name,
+                      !selectedPlayers.some((sp) => sp.player_id === pick_name)
+                    )
+                  }
+                >
+                  <td colSpan={3}>
+                    {pick_name.replace(`(${roster?.username})`, "")}
                   </td>
                 </tr>
               );
@@ -209,21 +225,30 @@ export default function Home() {
       <h1>Trade App</h1>
 
       <div className="flex flex-col h-full justify-evenly">
-        <div className="flex flex-col m-8">
+        <div className="flex flex-col m-8 items-center">
           <label>Enter Your Sleeper Username</label>
           <input
+            className="w-[15rem] text-center"
             type="text"
             placeholder="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
-          <button onClick={() => fetchUserLeagues()}>Submit</button>
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+            onClick={() => fetchUserLeagues()}
+          >
+            Fetch Leagues
+          </button>
         </div>
 
         {userLeagues.user_id && (
-          <div className="flex flex-col m-8">
+          <div className="flex flex-col m-8 items-center text-center">
             <label>Select League to find trades in</label>
-            <select onChange={(e) => setSelectedLeagueId(e.target.value)}>
+            <select
+              onChange={(e) => setSelectedLeagueId(e.target.value)}
+              className="w-[15rem] text-center"
+            >
               <option value="" hidden>
                 Select League
               </option>
@@ -236,18 +261,20 @@ export default function Home() {
               })}
             </select>
             <button
+              className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
               disabled={selectedLeagueId === ""}
               onClick={fetchLeagueDetail}
             >
-              Fetch
+              Fetch Rosters
             </button>
           </div>
         )}
 
         {leagueDetail.league_id && (
-          <div className="flex flex-col m-8">
+          <div className="flex flex-col m-8 items-center text-center">
             <label>Select a Leaguemate to trade with</label>
             <select
+              className="w-[15rem] text-center"
               value={selectedLeaguemate.roster_id}
               onChange={(e) => selectLeaguemate(parseInt(e.target.value))}
             >
@@ -268,7 +295,7 @@ export default function Home() {
         )}
 
         {selectedLeaguemate.roster_id > 0 && (
-          <div className="flex flex-col m-8">
+          <div className="flex flex-col items-center text-center">
             <label>
               Select 5-15 players total from both teams that you are interested
               in including in a trade.
@@ -277,12 +304,13 @@ export default function Home() {
             <br />
             <em>{selectedPlayers.length} selected</em>
             <br /> <br />
-            <div className="flex flex-col">
-              <div className="flex justify-evenly">
+            <div className="flex flex-col items-center">
+              <div className="flex">
                 {getRosterTable(userRoster)}
                 {getRosterTable(lmRoster)}
               </div>
               <button
+                className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
                 onClick={() => {
                   if (
                     selectedPlayers.length >= 5 &&
@@ -301,6 +329,55 @@ export default function Home() {
                 Submit Players
               </button>
             </div>
+          </div>
+        )}
+
+        {identifier && (
+          <div className="flex flex-col items-center">
+            <div className="flex flex-col m-8">
+              <label>
+                Send Leaguemate this link for them to rank these players
+              </label>
+              <div className="flex">
+                <input
+                  type="text"
+                  value={`${
+                    typeof window !== "undefined" ? window.location.origin : ""
+                  }/rank/${identifier}/l`}
+                  readOnly
+                  className="border px-2 py-1 w-full"
+                />
+                <button
+                  className="bg-blue-600 text-white px-3 py-1 rounded"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${
+                          typeof window !== "undefined"
+                            ? window.location.origin
+                            : ""
+                        }/rank/${identifier}/l`
+                      );
+
+                      setCopied(true);
+
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch {
+                      console.error("Failed to copy");
+                    }
+                  }}
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+            <Link
+              href={`${
+                typeof window !== "undefined" ? window.location.origin : ""
+              }/rank/${identifier}/u`}
+            >
+              Link for you to rank these players
+            </Link>
           </div>
         )}
       </div>
