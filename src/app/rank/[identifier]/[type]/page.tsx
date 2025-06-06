@@ -222,7 +222,6 @@ export default function Rank({
         <div className="flex flex-col items-center text-center">
           <ol>
             {twoForOnes
-              .filter((t) => t.gap < 25)
               .sort(
                 (a, b) =>
                   a.gap - b.gap ||
@@ -231,6 +230,7 @@ export default function Rank({
                     parseInt(a.j) -
                     (parseInt(b.k) + parseInt(b.i) + parseInt(b.j))
               )
+              .slice(0, 10)
               .map((comp) => {
                 return (
                   <li
