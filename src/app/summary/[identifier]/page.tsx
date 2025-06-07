@@ -47,9 +47,12 @@ export default function Summary({
     {
       user: string[];
       lm: string[];
-      sumUser: number;
-      sumLm: number;
-      diff: number;
+      sumUserGive: number;
+      sumUserReceive: number;
+      sumLmGive: number;
+      sumLmReceive: number;
+      userDiff: number;
+      lmDiff: number;
     }[]
   >([]);
 
@@ -68,7 +71,16 @@ export default function Summary({
 
   useEffect(() => {
     if (summary.user_ranks.length > 0 && summary.lm_ranks.length > 0) {
-      const trades = findFairTrades(summary.user_ranks, summary.lm_ranks);
+      const trades = findFairTrades(
+        summary.players
+          .filter((p) => p.manager === "u")
+          .map((p) => p.player_id),
+        summary.players
+          .filter((p) => p.manager === "l")
+          .map((p) => p.player_id),
+        summary.user_ranks,
+        summary.lm_ranks
+      );
 
       setFairTrades(trades);
     }
@@ -167,25 +179,63 @@ export default function Summary({
               return (
                 <li
                   key={ft.user.join("_") + ft.lm.join("_")}
-                  className="w-full flex mb-8"
+                  className="w-full flex mb-8 bg-gray-600"
                 >
                   <div className="inline-block w-[50%] flex flex-col">
-                    <div>{summary.username}</div>
+                    <div>
+                      <strong className="text-blue-400">
+                        {summary.username}
+                      </strong>
+                      <em className="text-green-400"> +{ft.userDiff}</em>
+                    </div>
                     {ft.user.map((player_id) => {
+                      const user_score = summary.user_ranks.find(
+                        (r: { [key: string]: string | number }) =>
+                          r.player_id === player_id
+                      )?.score;
+                      const lm_score = summary.lm_ranks.find(
+                        (r: { [key: string]: string | number }) =>
+                          r.player_id === player_id
+                      )?.score;
                       return (
-                        <div key={player_id}>
-                          {allplayers[player_id]?.full_name || player_id}
+                        <div key={player_id} className="text-yellow-500">
+                          <em className="text-blue-400">{user_score}</em>
+                          &nbsp;
+                          <span>
+                            {allplayers[player_id]?.full_name || player_id}
+                          </span>
+                          &nbsp;
+                          <em className="text-red-400">{lm_score}</em>
                         </div>
                       );
                     })}
                   </div>
-                  <p>FOR</p>
-                  <div className="inline-block w-[50%]">
-                    {summary.lm_username}
+
+                  <div className="inline-block w-[50%] flex flex-col">
+                    <div>
+                      <strong className="text-red-400">
+                        {summary.lm_username}
+                      </strong>
+                      <em className="text-green-400"> +{ft.lmDiff}</em>
+                    </div>
                     {ft.lm.map((player_id) => {
+                      const user_score = summary.user_ranks.find(
+                        (r: { [key: string]: string | number }) =>
+                          r.player_id === player_id
+                      )?.score;
+                      const lm_score = summary.lm_ranks.find(
+                        (r: { [key: string]: string | number }) =>
+                          r.player_id === player_id
+                      )?.score;
                       return (
-                        <div key={player_id}>
-                          {allplayers[player_id]?.full_name || player_id}
+                        <div key={player_id} className="text-yellow-500">
+                          <em className="text-blue-400">{user_score}</em>
+                          &nbsp;
+                          <span>
+                            {allplayers[player_id]?.full_name || player_id}
+                          </span>
+                          &nbsp;
+                          <em className="text-red-400">{lm_score}</em>
                         </div>
                       );
                     })}

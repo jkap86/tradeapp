@@ -1,86 +1,92 @@
-/**
- * Given two rosters (`userScores` and `lmScores`), each as arrays of
- * `{ player_id: string; score: number }`, returns all possible trades
- * where the total score difference is within `margin`. Trades that
- * include the same player on both sides are excluded.
- *
- * A “trade” here is any non‐empty subset of `userScores` swapped for any
- * non‐empty subset of `lmScores`, as long as
- *   | sumUser – sumLm | ≤ margin.
- */
-
 type PlayerScore = { player_id: string; score: number };
 
 type Trade = {
-  user: string[]; // player_ids from user’s roster
-  lm: string[]; // player_ids from leaguemate’s roster
-  sumUser: number; // total score of `user`
-  sumLm: number; // total score of `lm`
-  diff: number; // Math.abs(sumUser - sumLm)
+  user: string[]; // player_ids the user gives (must come from userRoster)
+  lm: string[]; // player_ids the mate gives (must come from lmRoster)
+  sumUserGive: number; // total of userVal for the user-given players
+  sumUserReceive: number; // total of userVal for the mate-given players
+  sumLmGive: number; // total of lmVal for the mate-given players
+  sumLmReceive: number; // total of lmVal for the user-given players
+  userDiff: number; // sumUserReceive - sumUserGive
+  lmDiff: number;
 };
 
-/**
- * Generate all non‐empty subsets of `players`. Returns an array of
- * objects { subset: string[], sum: number } where `subset` is a list
- * of player_ids and `sum` is the sum of their scores.
- */
+/** helper to enumerate all non‐empty subsets of a given roster */
 function allSubsets(
-  players: PlayerScore[]
+  rosterIds: string[],
+  valMap: Record<string, number>
 ): Array<{ subset: string[]; sum: number }> {
   const result: Array<{ subset: string[]; sum: number }> = [];
-  const n = players.length;
-  const totalMasks = 1 << n; // 2^n
-
-  for (let mask = 1; mask < totalMasks; mask++) {
+  const n = rosterIds.length;
+  for (let mask = 1; mask < 1 << n; mask++) {
     let sum = 0;
     const subset: string[] = [];
     for (let i = 0; i < n; i++) {
       if (mask & (1 << i)) {
-        subset.push(players[i].player_id);
-        sum += players[i].score;
+        const pid = rosterIds[i];
+        subset.push(pid);
+        sum += valMap[pid] ?? 0;
       }
     }
     result.push({ subset, sum });
   }
-
   return result;
 }
 
 /**
- * Finds all fair trades between `userScores` and `lmScores` given a `margin`.
- * Excludes any trade where the same player appears on both sides.
- * Returns an array of Trade objects with keys:
- *   - user: string[]
- *   - lm: string[]
- *   - sumUser: number
- *   - sumLm: number
- *   - diff: number
+ * Finds all mutually beneficial trades between two managers.
+ *
+ * @param userRoster  – player_ids the user actually owns
+ * @param lmRoster    – player_ids the mate actually owns
+ * @param userScores  – user’s valuation for every player (array of {player_id,score})
+ * @param lmScores    – mate’s valuation for every player
  */
 export function findFairTrades(
+  userRoster: string[],
+  lmRoster: string[],
   userScores: PlayerScore[],
-  lmScores: PlayerScore[],
-  margin = 5
+  lmScores: PlayerScore[]
 ): Trade[] {
-  // 1) Build all non-empty subsets for each side
-  const subsUser = allSubsets(userScores);
-  const subsLm = allSubsets(lmScores);
+  // Build quick lookup tables
+  const userVal: Record<string, number> = {};
+  userScores.forEach((p) => (userVal[p.player_id] = p.score));
+  const lmVal: Record<string, number> = {};
+  lmScores.forEach((p) => (lmVal[p.player_id] = p.score));
+
+  // Enumerate subsets *only* from each manager’s actual roster
+  const subsUser = allSubsets(userRoster, userVal);
+  const subsLm = allSubsets(lmRoster, lmVal);
 
   const trades: Trade[] = [];
-  // 2) For each subset from user, check every subset from lm
-  for (const { subset: userSubset, sum: sumUser } of subsUser) {
-    for (const { subset: lmSubset, sum: sumLm } of subsLm) {
-      // Exclude any trade where the same player appears on both sides
-      const overlap = userSubset.some((pid) => lmSubset.includes(pid));
-      if (overlap) continue;
+  for (const { subset: giveUser, sum: sumUserGive } of subsUser) {
+    for (const { subset: giveLm, sum: sumLmGive } of subsLm) {
+      // no overlapping players
+      if (giveUser.some((pid) => giveLm.includes(pid))) continue;
 
-      const diff = Math.abs(sumUser - sumLm);
-      if (diff <= margin) {
+      // what user receives (valued by the user)
+      const sumUserReceive = giveLm.reduce(
+        (acc, pid) => acc + (userVal[pid] || 0),
+        0
+      );
+      // what mate receives (valued by the mate)
+      const sumLmReceive = giveUser.reduce(
+        (acc, pid) => acc + (lmVal[pid] || 0),
+        0
+      );
+
+      // mutual benefit
+      const userGain = sumUserReceive - sumUserGive;
+      const lmGain = sumLmReceive - sumLmGive;
+      if (userGain > 0 && lmGain > 0) {
         trades.push({
-          user: userSubset.slice(), // clone to be safe
-          lm: lmSubset.slice(),
-          sumUser,
-          sumLm,
-          diff,
+          user: [...giveUser],
+          lm: [...giveLm],
+          sumUserGive,
+          sumUserReceive,
+          sumLmGive,
+          sumLmReceive,
+          userDiff: sumUserReceive - sumUserGive,
+          lmDiff: sumLmReceive - sumLmGive,
         });
       }
     }
