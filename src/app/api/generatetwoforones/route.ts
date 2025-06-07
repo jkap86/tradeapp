@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import pool from "@/lib/pool";
-import { bradleyTerry } from "@/utils/bradleyTerry";
-import { PairwiseVote } from "@/utils/bradleyTerry";
+//import pool from "@/lib/pool";
+//import { bradleyTerry } from "@/utils/bradleyTerry";
+//import { PairwiseVote } from "@/utils/bradleyTerry";
 import { generateMultiPlayerComps } from "@/utils/openAi";
 
 type PlayerRank = { rank: number; player_id: string };
@@ -10,16 +10,18 @@ export async function POST(req: NextRequest) {
   const formData = await req.json();
 
   const {
-    identifier,
     ranks,
     type,
   }: { identifier: string; ranks: PlayerRank[]; type: string } = formData;
 
+  /*
   const identifier_array = identifier?.split("__");
 
+  
   const user_id = identifier_array[0];
   const league_id = identifier_array[1];
   const lm_user_id = identifier_array[2];
+  */
 
   if (!["u", "l"].includes(type))
     return NextResponse.json("Error with type...");
