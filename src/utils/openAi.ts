@@ -24,7 +24,7 @@ Your job is to propose the next ${count} most informative comparisons, choosing 
   - "3-for-1",
   - "3-for-2".
 Each comparison should help disambiguate the user's ranking by targeting groups whose sums are closest.
-Make sure to **avoid trivial matchups** (like top 2 vs. bottom 1).
+Make sure to **avoid trivial matchups where result can be determined from rankings**.
 Return only valid JSON in this shape:
 
 {
