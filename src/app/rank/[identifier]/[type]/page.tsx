@@ -308,6 +308,7 @@ export default function Rank({
           </button>
         </div>
       )*/}
+      {isLoading && <strong>LOADING...</strong>}
     </div>
   );
 }

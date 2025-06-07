@@ -50,7 +50,7 @@ Please output the JSON object described above.
 
   // Call the OpenAI API
   const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo",
+    model: process.env.MODEL as string,
     messages: [
       { role: "system", content: systemPrompt.trim() },
       { role: "user", content: userPrompt.trim() },
