@@ -13,6 +13,12 @@ const allplayers: { [key: string]: { [key: string]: string } } =
     ])
   );
 
+type MultiPlayerComp = {
+  id: string;
+  a: string[];
+  b: string[];
+  winner: "" | "a" | "b";
+};
 export default function Rank({
   params,
 }: {
@@ -22,38 +28,10 @@ export default function Rank({
   const { identifier, type } = use(params);
   const [league_name, setLeague_name] = useState("");
   const [ranks, setRanks] = useState<{ rank: number; player_id: string }[]>([]);
-  const [scores, setScores] = useState<
-    { rank: number; player_id: string; score: number; manager: "u" | "l" }[]
-  >([]);
-  const [twoForOnes, SetTwoForOnes] = useState<
-    {
-      i: string;
-      j: string;
-      k: string;
-      gap: number;
-      winner: "" | "pair" | "single";
-    }[]
-  >([]);
-  const [pairwiseVotes, setPairwiseVotes] = useState<
-    {
-      a: string;
-      b: string;
-      winner: string;
-    }[]
-  >([]);
-
-  useEffect(() => {
-    if (scores.length > 0) {
-      const result = getTwoForOne(scores);
-
-      SetTwoForOnes(
-        result.map((r) => ({
-          ...r,
-          winner: "",
-        }))
-      );
-    }
-  }, [scores]);
+  const [multPlayerComps, setMultiPlayerComps] = useState<MultiPlayerComp[]>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchPlayers = async () => {
@@ -126,32 +104,22 @@ export default function Rank({
   };
 
   const generateTwoForOnes = async () => {
-    const scores = await axios.post("/api/generatetwoforones", {
+    setIsLoading(true);
+    const comps = await axios.post("/api/generatetwoforones", {
       identifier,
       ranks,
       type,
     });
 
-    setScores(scores.data.rankings);
-    setPairwiseVotes(scores.data.pairwiseVotes);
+    setMultiPlayerComps(comps.data);
+    setIsLoading(false);
   };
 
-  const pickSide = (
-    comp: {
-      i: string;
-      j: string;
-      k: string;
-      gap: number;
-      winner: "" | "pair" | "single";
-    },
-    winner: "pair" | "single"
-  ) => {
-    const existingTwoForOnes = twoForOnes;
+  const pickSide = (comp: MultiPlayerComp, winner: "a" | "b") => {
+    const existingMultiComps = multPlayerComps;
 
-    SetTwoForOnes([
-      ...existingTwoForOnes.filter(
-        (e) => !(e.i === comp.i && e.j === comp.j && e.k === comp.k)
-      ),
+    setMultiPlayerComps([
+      ...existingMultiComps.filter((c) => c.id !== comp.id),
       {
         ...comp,
         winner,
@@ -159,13 +127,16 @@ export default function Rank({
     ]);
   };
 
-  const generateRankings = async () => {
-    await axios.post("/api/generaterankings", {
+  const generateScores = async () => {
+    setIsLoading(true);
+    await axios.post("/api/generatescores", {
       identifier,
-      twoForOnes,
+      ranking: ranks,
+      comparisons: multPlayerComps,
       type,
-      existingVotes: pairwiseVotes,
     });
+
+    setIsLoading(false);
 
     router.push(`/summary/${identifier}`);
   };
@@ -215,10 +186,72 @@ export default function Rank({
       <button
         className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
         onClick={generateTwoForOnes}
+        disabled={isLoading}
       >
-        Generate 2 for 1 comps
+        Generate Multi Player Comps
       </button>
-      {twoForOnes.length > 0 && (
+      {multPlayerComps.length > 0 && (
+        <div className="flex flex-col items-center text-center">
+          <ol>
+            {multPlayerComps
+              .sort((a, b) => (a.id > b.id ? -1 : 1))
+              .map((comp) => {
+                return (
+                  <li
+                    key={`${comp.a.join("_") + comp.b.join("_")}`}
+                    className="flex justify-evenly items-center bg-gray-600 m-4"
+                  >
+                    <span
+                      className={
+                        (comp.winner === "a"
+                          ? "outline outline-2 outline-green-500"
+                          : "") + " flex flex-col"
+                      }
+                      onClick={() => pickSide(comp, "a")}
+                    >
+                      <div className="flex flex-col">
+                        {comp.a.map((player_id) => {
+                          return (
+                            <p key={player_id}>
+                              {allplayers[player_id]?.full_name || player_id}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </span>
+                    <span className="m-4">OR</span>
+                    <span
+                      className={
+                        (comp.winner === "b"
+                          ? "outline outline-2 outline-green-500"
+                          : "") + " flex flex-col"
+                      }
+                      onClick={() => pickSide(comp, "b")}
+                    >
+                      <div className="flex flex-col">
+                        {comp.b.map((player_id) => {
+                          return (
+                            <p key={player_id}>
+                              {allplayers[player_id]?.full_name || player_id}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    </span>
+                  </li>
+                );
+              })}
+          </ol>
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded w-[15rem]"
+            onClick={generateScores}
+            disabled={isLoading}
+          >
+            Generate Scores
+          </button>
+        </div>
+      )}
+      {/* twoForOnes.length > 0 && (
         <div className="flex flex-col items-center text-center">
           <ol>
             {twoForOnes
@@ -274,48 +307,7 @@ export default function Rank({
             Generate Rankings
           </button>
         </div>
-      )}
+      )*/}
     </div>
   );
 }
-
-const getTwoForOne = (
-  scores: { rank: number; player_id: string; score: number }[]
-) => {
-  type TwoForOneCandidate = { i: string; j: string; k: string; gap: number };
-
-  const N = scores.length;
-  // Build a lookup: player_id → { rank, score }
-  const lookup: Record<string, { rank: number; score: number }> = {};
-  scores.forEach((p) => {
-    lookup[p.player_id] = { rank: p.rank, score: p.score };
-  });
-
-  const candidates: TwoForOneCandidate[] = [];
-  // Enumerate all unordered pairs (i, j)
-  for (let a = 0; a < N - 1; a++) {
-    for (let b = a + 1; b < N; b++) {
-      const i = scores[a].player_id;
-      const j = scores[b].player_id;
-      const sumIJ = lookup[i].score + lookup[j].score;
-
-      // For each possible singleton k
-      for (let c = 0; c < N; c++) {
-        const k = scores[c].player_id;
-        if (k === i || k === j) continue;
-
-        const { rank: rankI } = lookup[i];
-        const { rank: rankJ } = lookup[j];
-        const { rank: rankK } = lookup[k];
-        // Filter out “obvious” cases: if both i and j individually outrank k
-        if (!(rankI > rankK && rankJ > rankK)) continue;
-
-        const gap = Math.abs(sumIJ - lookup[k].score);
-        candidates.push({ i, j, k, gap });
-      }
-    }
-  }
-
-  // Sort by gap ascending and return the sorted array
-  return candidates.sort((a, b) => a.gap - b.gap);
-};

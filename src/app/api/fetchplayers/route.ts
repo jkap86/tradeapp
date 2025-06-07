@@ -12,7 +12,6 @@ export async function GET(req: NextRequest) {
   const league_id = identifier_array[1];
   const lm_user_id = identifier_array[2];
 
-  console.log({ user_id, league_id, lm_user_id });
   const query = `
         SELECT *
         FROM db
