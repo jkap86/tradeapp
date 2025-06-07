@@ -61,7 +61,12 @@ Please output the JSON object described above.
   const text = response.choices[0].message.content || "Error generating scores";
   let parsed;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(
+      text
+        .replace(/^\s*```(?:json)?\s*/, "") // leading ```json
+        .replace(/\s*```$/, "") // trailing ```
+        .trim()
+    );
 
     const query = `
     UPDATE db
