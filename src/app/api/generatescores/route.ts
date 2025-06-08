@@ -34,7 +34,6 @@ Return ONLY valid JSON in this exact shape:
 }
 
 Ensure:
-- Top‐ranked player may be near 100, bottom near 0.
 - Scores are consistent with the ranking order and comparisons.
   `;
 

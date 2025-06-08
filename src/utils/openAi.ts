@@ -18,13 +18,13 @@ export async function generateMultiPlayerComps(
 ): Promise<Array<{ type: string; groupA: string[]; groupB: string[] }>> {
   const systemPrompt = `
 You are a fantasy‐football ranking assistant.  The user has provided a strict ranking of players.
-Your job is to propose the next ${count} most informative comparisons, choosing from:
+Your job is to propose up to ${count} most informative comparisons, choosing from:
   - "2-for-1" (compare two players vs. one),
   - "2-for-2",
   - "3-for-1",
   - "3-for-2".
 Each comparison should help disambiguate the user's ranking by targeting groups whose sums are closest.
-Make sure to **avoid trivial matchups where result can be determined from rankings**.
+Make sure to **avoid trivial matchups where transitive property can be used to determine result from rankings**.
 Return only valid JSON in this shape:
 
 {
@@ -39,7 +39,7 @@ Return only valid JSON in this shape:
 Here is the current ranking (1 = best):
 ${JSON.stringify(ranking, null, 2)}
 
-Please output the JSON object described above with exactly ${count} unique entries.
+Please output the JSON object described above with up to ${count} unique entries.
 `;
 
   const resp = await openai.chat.completions.create({
