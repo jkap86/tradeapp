@@ -20,9 +20,9 @@ You are a fantasy–football analytics assistant.  I will give you:
 2) A set of multi-player comparison results.
 
 Your task is to assign each player a numeric score on a 0–100 scale (higher is better),
-such that all given comparisons are respected:
-- For a "2-for-1" or similar where winner==="a", value(a sum) > value(b sum).
-- If winner==="b", value(b sum) > value(a sum).
+such that all given comparisons are respected.
+For example, for comparison of {a: [player1, player2] b: [player3] winner: b}, player3 score is greater than 
+player1 score + player2 score.  This is essential! 
 
 Return ONLY valid JSON in this exact shape:
 
