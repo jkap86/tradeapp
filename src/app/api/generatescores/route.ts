@@ -21,8 +21,8 @@ You are a fantasy–football analytics assistant.  I will give you:
 
 Your task is to assign each player a numeric score on a 0–100 scale (higher is better),
 such that all given comparisons are respected:
-- For a "2-for-1" or similar where winner==="groupA", value(groupA sum) > value(groupB sum).
-- If winner==="groupB", value(groupB sum) > value(groupA sum).
+- For a "2-for-1" or similar where winner==="a", value(a sum) > value(b sum).
+- If winner==="b", value(b sum) > value(a sum).
 
 Return ONLY valid JSON in this exact shape:
 
